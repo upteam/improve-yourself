@@ -1,0 +1,251 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+OpenERP Migraiton Script
+
+This script executes OpenERP cron jobs. Normally, cron jobs are handled by the
+OpenERP server but depending on deployment needs, independent worker processes
+can be used. This is especially the case when the server is run via Gunicorn.
+
+OpenERP cron jobs worker re-uses openerp-server command-line options but does
+not honor all of them.
+
+Meaningful options include:
+
+  -d, --database  comma-separated list of databases to monitor for cron jobs
+                  processing. If left empty, the worker monitors all databases
+                  (given by `psql -ls`).
+
+  -c              for all parameters, as ususal.
+"""
+
+import logging
+import os
+import signal
+import sys
+
+import openerp
+
+_logger = logging.getLogger('migration')
+
+quit_signals_received = 0
+
+
+def signal_handler(sig, frame):
+    """ Signal handler: exit ungracefully on the second handled signal.
+
+    :param sig: the signal number
+    :param frame: the interrupted stack frame or None
+    """
+    global quit_signals_received
+    quit_signals_received += 1
+    import openerp.addons.base
+    openerp.addons.base.ir.ir_cron.quit_signal_received = True
+    if quit_signals_received == 1 and openerp.addons.base.ir.ir_cron.job_in_progress:
+        _logger.info("Waiting for the current job to complete.")
+        print "Waiting for the current job to complete."
+        print "Hit Ctrl-C again to force shutdown."
+    if quit_signals_received > 1:
+        # logging.shutdown was already called at this point.
+        sys.stderr.write("Forced shutdown.\n")
+        os._exit(0)
+
+
+def setup_signal_handlers():
+    """ Register the signal handler defined above. """
+    SIGNALS = map(lambda x: getattr(signal, "SIG%s" % x), "INT TERM".split())
+    if os.name == 'posix':
+        map(lambda sig: signal.signal(sig, signal_handler), SIGNALS)
+    elif os.name == 'nt':
+        import win32api
+        win32api.SetConsoleCtrlHandler(lambda sig: signal_handler(sig, None), 1)
+
+if __name__ == '__main__':
+    os.environ['TZ'] = 'UTC'
+    openerp.tools.config.parse_config(sys.argv[1:])
+    config = openerp.tools.config
+    if config['log_handler'] == [':INFO']:
+        # Replace the default value, which is suitable for openerp-server.
+        config['log_handler'].append('openerp.addons.base.ir.ir_cron:DEBUG')
+
+    setup_signal_handlers()
+    openerp.modules.module.initialize_sys_path()
+    openerp.modules.loading.open_openerp_namespace()
+    openerp.netsvc.init_logger()
+    openerp.cron.enable_schedule_wakeup = False
+
+    _logger.info("OpenERP Migrations. BE CAREFUL BEFORE press Ctrl-C to exit.")
+    _logger.info("Documentation is available at the top of the `openerp-migration` file.")
+    db_names = []
+    if config['db_name']:
+        db_names = config['db_name'].split(',')
+
+    if not db_names:
+        _logger.info("No database specified, please use -d argument")
+        sys.exit(4)
+    elif len(db_names) > 1:
+        _logger.info("You can only migrate one database per database")
+        sys.exit(8)
+
+    #openerp.addons.base.ir.ir_cron.ir_cron._run(db_names)
+    # First step must execute a SQL to prepare database before update-all
+    # search a file named openerp-migration.sql
+    import openerp.sql_db as sql_db
+    from openerp.modules import get_modules, get_module_path, load_information_from_description_file
+    from openerp.modules.db import create_categories
+
+    db = sql_db.db_connect(db_names[0])
+    cr = db.cursor()
+    # Create a schema for migration, to put function inside
+    cr.execute("""SELECT count(*)
+                  FROM   pg_namespace
+                  WHERE  nspname='migration61'""")
+
+    if not cr.fetchone()[0]:
+        cr.execute("""CREATE SCHEMA migration61;
+               COMMENT ON SCHEMA migration61
+               IS 'Schema use to store function for migration on OpenERP 61';""")
+        cr.commit()
+        _logger.info('Migration61 schema have been created !')
+
+    # Load all functions in the migration schema
+    _logger.info('Load Function for OpenERP 6.1')
+    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-functions61.sql')
+    try:
+        cr.execute(fct_file.read())
+        cr.commit()
+    finally:
+        fct_file.close()
+
+    _logger.info('Execute initial SQL script to convert some tables')
+    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-initial61.sql')
+    try:
+        cr.execute(fct_file.read())
+        cr.commit()
+    finally:
+        fct_file.close()
+
+    # Scan all path and add new modules, before execute the rest of the migration
+    for i in get_modules():
+        mod_path = get_module_path(i)
+        if not mod_path:
+            continue
+
+        info = load_information_from_description_file(i)
+        if not info:
+            continue
+        categories = info['category'].split('/')
+        category_id = create_categories(cr, categories)
+
+        if info['installable']:
+            state = 'uninstalled'
+            if info['auto_install'] and not info['depends']:
+                state = 'to install'
+        else:
+            state = 'uninstallable'
+
+        dependencies = info['depends']
+
+        # check if module is already installed
+        cr.execute("""SELECT id, state FROM ir_module_module WHERE name=%s""", (i,))
+        res = cr.fetchone()
+
+        if res is None:
+            # Module not exist in ir-module_module
+            cr.execute("""INSERT INTO ir_module_module (create_uid, create_date, author, website, name, shortdesc, description,
+                                      category_id, auto_install, state, certificate, web,
+                                      license, complexity, application, icon, sequence)
+                          VALUES (1, now(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""", (
+                info['author'], info['website'], i, info['name'], info['description'], category_id,
+                info['auto_install'], state, info['certificate'], info['web'], info['license'],
+                info['complexity'], info['application'], info['icon'], info['sequence']))
+            id = cr.fetchone()[0]
+
+            cr.execute("""INSERT INTO ir_model_data (create_uid, create_date, name, model, module, res_id, noupdate)
+                          VALUES (1, now(), %s, %s, %s, %s, %s)""",
+                       ('module_' + i, 'ir.module.module', 'base', id, True))
+
+            for d in dependencies:
+                cr.execute("""INSERT INTO ir_module_module_dependency (create_date, create_uid, module_id, name)
+                           VALUES (now(), 1, %s, %s)""", (id, d))
+            cr.commit()
+        else:
+            # Module exists, we update it and flag all new depends to be installed
+            cr.execute("""UPDATE ir_module_module
+                          SET author=%s, website=%s, name=%s, shortdesc=%s, description=%s,
+                             category_id=%s, auto_install=%s, certificate=%s, web=%s,
+                             license=%s, complexity=%s, application=%s, icon=%s, sequence=%s,
+                             write_date=now(), write_uid=1
+                          WHERE id=%s""", (
+                info['author'], info['website'], i, info['name'], info['description'], category_id,
+                info['auto_install'], info['certificate'], info['web'], info['license'],
+                info['complexity'], info['application'], info['icon'], info['sequence'], res[0]))
+
+            # For each dependancies, delete all before recreate link (some module are remove or rename)
+            if dependencies:
+                cr.execute("""DELETE FROM ir_module_module_dependency WHERE module_id=%s""", (res[0],))
+                cr.commit()
+
+            for d in dependencies:
+                cr.execute("""INSERT INTO ir_module_module_dependency (create_date, create_uid, module_id, name) VALUES (now(), 1, %s, %s)""", (res[0], d))
+            cr.commit()
+
+        if dependencies and (res and res[1] == 'installed' or state == 'to install'):
+            cr.execute("""UPDATE ir_module_module SET state = 'to install' WHERE name IN %s AND state = 'uninstalled'""", (tuple(dependencies),))
+            cr.commit()
+
+    # alter structure for the database
+    _logger.info('Alter structure for OpenERP 6.1')
+    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-structure61.sql')
+    try:
+        cr.execute(fct_file.read())
+        cr.commit()
+    finally:
+        fct_file.close()
+
+
+    # We launch the update directly
+    # we must be loop to check if module is not in to upgrade or to install
+    _logger.info(80 * '*')
+    _logger.info('** Start to update module directly **')
+    _logger.info(80 * '*')
+
+    config['update']['all'] = 1
+    max_loop = 15
+    count = 1
+    while 1:
+        _logger.info('****** Loop: %d' % count)
+        try:
+            db, registry = openerp.pooler.restart_pool(db_names[0], update_module=True)
+        except Exception:
+            _logger.exception('Failed to initialize database `%s`.', db_names[0])
+            _logger.error('Please check the log to identify the problem')
+            sys.exit(16)
+
+        # check if it stay some module in to upgrade or to install
+        cr.commit()  # We need to commit to see the last changes made by the pooler
+        cr.execute("""SELECT count(*) FROM ir_module_module WHERE state IN ('to install', 'to upgrade')""")
+        if not cr.fetchone()[0]:
+            _logger.info(80 * '*')
+            _logger.info('** Migration loop is finished')
+            _logger.info(80 * '*')
+            break
+
+        count += 1
+        if count > max_loop:
+            _logger.error('Counter loop have been pass the maximum recursive loop (%d) for migrate' % max_loop)
+            _logger.error('Please check the log to identify the problem')
+            sys.exit(16)
+            break
+
+    _logger.info(80 * '*')
+    _logger.info(80 * '*')
+    _logger.info('Update process made %d loop' % count)
+
+    # At the end of migration of module, we execute a final step
+    cr.close()
+    _logger.info('Migration Done')
+    sys.exit(0)
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
