@@ -1,7 +1,7 @@
 Migrate Yourself
 ================
 
-Migrate Yourself purpose to made a migration yourself in a context of privacy datas
+Migrate Yourself purpose to made a migration yourself in a context of privacy datas (anonymization takes too long and the reverse also)
 
 If you don't have the time and expertise, we reocmmande to use an OPW, and let the editor to migrate database for yourself
 
@@ -9,15 +9,28 @@ If you don't have the time and expertise, we reocmmande to use an OPW, and let t
 How to use it
 -------------
 
+Manual mode
+^^^^^^^^^^^
+
+You must install the new version of OpenERP and create the configuration file, and create a new database with demo data
+when this step is correct, you can prepare your migration
+
 Copy ``openerp-migration`` file in the server root (at the same place as ``openerp-server``)
 
 and copy the content of ``addons/official/X.Y/`` and ``addons/extra/X.Y`` to the folder ``openerp/addons/base/maintenance/migrations``
 
 where X.Y is the version who want to migrate
 
-.. todo::
+Automatic mode
+^^^^^^^^^^^^^^
 
-    Add a Makefile to create the real folder tree and use ``cp`` to copy files and folders
+Launch this command
+
+::
+
+    make prepare
+
+juste copy the content of the dist directory in the server tree
 
 
 Contribute
@@ -30,3 +43,7 @@ and if concern an official module, put it in the official for the version you wa
 other module must be put in extra folder
 
 When you're ready to send them, send us a pull request
+
+Regards
+
+The UPTEAM
