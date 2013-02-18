@@ -10,7 +10,7 @@ prepare: clean
 	@echo "Prepare the files structure for the migration"
 	rm -rf $(TMPFOLDER)
 	mkdir $(TMPFOLDER)
-	cp server/$(VERSION)/openerp-migration $(TMPFOLDER)/
+	cp server/$(VERSION)/openerp-migration* $(TMPFOLDER)/
 	mkdir -p $(TMPFOLDER)/$(MAINTENANCE)/
 	cp -a addons/official/$(VERSION)/* $(TMPFOLDER)/$(MAINTENANCE)/
 	echo "Please copy the folder content in the OpenERP server tree" >> $(TMPFOLDER)/$(READMEFILE)
