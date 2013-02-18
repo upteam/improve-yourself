@@ -75,8 +75,10 @@ if __name__ == '__main__':
     openerp.netsvc.init_logger()
     openerp.cron.enable_schedule_wakeup = False
 
+    _logger.info(80 * '*')
     _logger.info("OpenERP Migrations. BE CAREFUL BEFORE press Ctrl-C to exit.")
     _logger.info("Documentation is available at the top of the `openerp-migration` file.")
+    _logger.info(80 * '*')
     db_names = []
     if config['db_name']:
         db_names = config['db_name'].split(',')
@@ -109,22 +111,30 @@ if __name__ == '__main__':
         cr.commit()
         _logger.info('Migration61 schema have been created !')
 
+    def load_and_execute_sql(current_cursor, filename):
+        """
+        load the specified filename and execute the content
+        check if file exists before execute it
+        """
+        try:
+            fct_file = openerp.tools.misc.file_open(filename)
+            try:
+                current_cursor.execute(fct_file.read())
+                current_cursor.commit()
+            finally:
+                fct_file.close()
+        except IOError, e:
+            pass
+
+    # excecute pre-process script 
+    load_and_execute_sql(cr, os.path.abspath(__file__) + '-pre-install61.sql')
+
     # Load all functions in the migration schema
     _logger.info('Load Function for OpenERP 6.1')
-    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-functions61.sql')
-    try:
-        cr.execute(fct_file.read())
-        cr.commit()
-    finally:
-        fct_file.close()
+    load_and_execute_sql(cr, os.path.abspath(__file__) + '-functions61.sql')
 
     _logger.info('Execute initial SQL script to convert some tables')
-    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-initial61.sql')
-    try:
-        cr.execute(fct_file.read())
-        cr.commit()
-    finally:
-        fct_file.close()
+    load_and_execute_sql(cr, os.path.abspath(__file__) + '-initial61.sql')
 
     # Scan all path and add new modules, before execute the rest of the migration
     for i in get_modules():
@@ -197,13 +207,7 @@ if __name__ == '__main__':
 
     # alter structure for the database
     _logger.info('Alter structure for OpenERP 6.1')
-    fct_file = openerp.tools.misc.file_open(os.path.abspath(__file__) + '-structure61.sql')
-    try:
-        cr.execute(fct_file.read())
-        cr.commit()
-    finally:
-        fct_file.close()
-
+    load_and_execute_sql(cr, os.path.abspath(__file__) + '-structure61.sql')
 
     # We launch the update directly
     # we must be loop to check if module is not in to upgrade or to install
@@ -244,6 +248,19 @@ if __name__ == '__main__':
     _logger.info('Update process made %d loop' % count)
 
     # At the end of migration of module, we execute a final step
+    load_and_execute_sql(cr, os.path.abspath(__file__) + '-post-install61.sql')
+
+    # Clean ir.model to delete unknown references
+    model_obj = registry.get('ir.model')
+    model_ids = model_obj.search(cr, 1, [])
+    delete_ids = []
+    for mod in model_obj.browse(cr, 1, model_ids):
+        if registry.get(mod.model) is None:
+            delete_ids.append(mod.id)
+
+    cr.execute("""DELETE FROM ir_model WHERE id IN (%s)""" % ','.join(map(str, delete_ids)))
+    cr.commit()
+
     cr.close()
     _logger.info('Migration Done')
     sys.exit(0)
