@@ -5,7 +5,7 @@ MAINTENANCE = openerp/addons/base/maintenance/migrations
 
 .PHONY: prepare clean
 
-prepare:
+prepare: clean
 	@echo "Prepare the files structure for the migration"
 	rm -rf $(TMPFOLDER)
 	mkdir $(TMPFOLDER)
@@ -21,3 +21,4 @@ prepare:
 
 clean:
 	@echo "Delete the $(TMPFOLDER) folder"
+	-rm -rf $(TMPFOLDER)
