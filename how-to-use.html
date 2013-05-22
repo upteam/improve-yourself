@@ -1,0 +1,143 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>How to use it &mdash; Improve Yourself 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Improve Yourself 1.0 documentation" href="index.html" />
+    <link rel="next" title="Custom" href="custom.html" />
+    <link rel="prev" title="Migrate Yourself" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="custom.html" title="Custom"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Migrate Yourself"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Improve Yourself 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="how-to-use-it">
+<h1>How to use it<a class="headerlink" href="#how-to-use-it" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="manual-mode">
+<h2>Manual mode<a class="headerlink" href="#manual-mode" title="Permalink to this headline">¶</a></h2>
+<p>You must install the new version of OpenERP and create the configuration file, and migrate your own module to the last version</p>
+<p>Create a new database and install your module resent in the current version, when it&#8217;s done you can prepare your migration</p>
+<p>Copy <tt class="docutils literal"><span class="pre">openerp-migration</span></tt> file in the server root (at the same place as <tt class="docutils literal"><span class="pre">openerp-server</span></tt>) and the SQL file</p>
+<p>For example if you migrate from version 5.0 to 7.0, replace X.Y by 5.0 and Z.A by 7.0</p>
+<p>and copy the content of <tt class="docutils literal"><span class="pre">addons/official/X.Y-Z.A/</span></tt> and <tt class="docutils literal"><span class="pre">addons/extra/X.Y-Z.A</span></tt> to the folder <tt class="docutils literal"><span class="pre">openerp/addons/base/maintenance/migrations</span></tt></p>
+<p>in this example</p>
+<div class="highlight-bash"><div class="highlight"><pre>cp server/7.0/openerp-migration /srv/openerp/server/
+cp server/7.0/*.sql /srv/openerp/server/
+cp addons/official/5.0-7.0 /srv/openerp/server/openerp/addons/base/maintenance/migrations/
+cp addons/extra/5.0-7.0 /srv/openerp/server/openerp/addons/base/maintenance/migrations/
+</pre></div>
+</div>
+</div>
+<div class="section" id="automatic-mode">
+<h2>Automatic mode<a class="headerlink" href="#automatic-mode" title="Permalink to this headline">¶</a></h2>
+<p>Launch this command (same example as manual mode)</p>
+<p>execute make prepare-X.Y-Z.A</p>
+<div class="highlight-bash"><div class="highlight"><pre>make prepare-5.0-7.0
+</pre></div>
+</div>
+<p>juste copy the content of the <strong>dist</strong> directory in the server tree</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">How to use it</a><ul>
+<li><a class="reference internal" href="#manual-mode">Manual mode</a></li>
+<li><a class="reference internal" href="#automatic-mode">Automatic mode</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Migrate Yourself</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="custom.html"
+                        title="next chapter">Custom</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/how-to-use.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="custom.html" title="Custom"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Migrate Yourself"
+             >previous</a> |</li>
+        <li><a href="index.html">Improve Yourself 1.0 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, UpTeam.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
+    </div>
+  </body>
+</html>
