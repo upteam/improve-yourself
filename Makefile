@@ -3,7 +3,7 @@ TMPFOLDER = dist
 MAINTENANCE = openerp/addons/base/maintenance/migrations
 READMEFILE = README-MIGRATION
 
-.PHONY: prepare clean
+.PHONY: prepare clean doc upload-doc
 
 help:
 	@echo "Available commands :"
@@ -31,3 +31,11 @@ prepare-6.0-6.1: prepare
 clean:
 	@echo "Delete the $(TMPFOLDER) folder"
 	-rm -rf $(TMPFOLDER)
+
+doc:
+	make -C doc clean
+	make -C doc html
+
+upload-doc: doc
+	@echo "Upload documentation on github"
+	@ghp-import -p -m "Update documentation" doc/build/html/
