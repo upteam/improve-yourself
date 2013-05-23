@@ -7,7 +7,8 @@ READMEFILE = README-MIGRATION
 
 help:
 	@echo "Available commands :"
-	@echo "    prepare-6.0-6.1"
+	@echo "    prepare-6.0-6.1        Migrate from 6.0 to 6.1"
+	@echo "    prepare-5.0-7.0        Migrate from 5.0 to 7.0"
 	@echo "    clean"
 
 prepare: clean
@@ -27,6 +28,10 @@ prepare: clean
 prepare-6.0-6.1: VERSION_FROM = 6.0
 prepare-6.0-6.1: VERSION_TO = 6.1
 prepare-6.0-6.1: prepare
+
+prepare-5.0-7.0: VERSION_FROM = 5.0
+prepare-5.0-7.0: VERSION_TO = 7.0
+prepare-5.0-7.0: prepare
 
 clean:
 	@echo "Delete the $(TMPFOLDER) folder"
