@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+##############################################################################
+#
+#    Migration module for OpenERP, Service migration
+#    Copyright (C) 2013 UpTeam (<http://pteam.github.com>) UpTeam
+#
+#    This file is a part of Migration
+#
+#    Migration is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Migration is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
+import sys
+import openerp
+import logging
+
+_logger = logging.getLogger('openerp-migration')
+
+if __name__ == "__main__":
+    args = sys.argv[1:]
+
+    openerp.cli.server.check_root_user()
+    openerp.tools.config.parse_config(args)
+    openerp.cli.server.check_postgres_user()
+    openerp.netsvc.init_logger()
+    openerp.cli.server.report_configuration()
+
+
+    _logger.info(80 * '*')
+    _logger.info("OpenERP Migrations. BE CAREFUL BEFORE press Ctrl-C to exit.")
+    _logger.info("Documentation is available at the top of the `openerp-migration` file.")
+    _logger.info(80 * '*')
+
+    config = openerp.tools.config
+    openerp.cli.server.setup_signal_handlers()
+
+    db_names = []
+    if config['db_name']:
+        db_names = config['db_name'].split(',')
+
+    if not db_names:
+        _logger.info("No database specified, please use -d argument")
+        sys.exit(4)
+    elif len(db_names) > 1:
+        _logger.info("You can only migrate one database per database")
+        sys.exit(8)
+
+
+    # openerp.cli.server.preload_registry(dbname)
+
+    _logger.info('done')
+
+# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
